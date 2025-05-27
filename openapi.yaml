@@ -1,0 +1,332 @@
+openapi: 3.0.3
+info:
+  title: Repair Ticket API
+  version: 1.0.0
+  description: API для системы управления заявками на ремонт
+
+tags:
+  - name: Auth
+    description: Авторизация и аутентификация
+  - name: RepairRequests
+    description: Работа с заявками на ремонт
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequestDto:
+      type: object
+      description: Данные для входа пользователя (логин и пароль).
+      properties:
+        username:
+          type: string
+          description: Логин пользователя
+        password:
+          type: string
+          description: Пароль пользователя
+      required: [ username, password ]
+
+    AuthResponseDto:
+      type: object
+      description: Ответ с JWT-токеном после успешной аутентификации.
+      properties:
+        token:
+          type: string
+          description: JWT-токен для доступа к защищённым ресурсам.
+      required: [ token ]
+
+    TicketRequestDto:
+      type: object
+      description: Запрос на создание новой заявки на ремонт.
+      properties:
+        title:
+          type: string
+          description: Название заявки.
+        description:
+          type: string
+          description: Детальное описание проблемы или задачи.
+      required: [ title, description ]
+
+    TicketResponseDto:
+      type: object
+      description: Ответ с основной информацией по заявке на ремонт.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Уникальный идентификатор заявки.
+        title:
+          type: string
+          description: Название заявки.
+        description:
+          type: string
+          description: Подробное описание заявки.
+        status:
+          $ref: '#/components/schemas/Status'
+        assignedTo:
+          type: string
+          description: Имя пользователя, назначенного исполнителем заявки.
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата и время создания заявки.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Дата и время обновления заявки.
+        createdBy:
+          type: string
+          description: Заявка создана.
+      required: [ id, title, description, status, createdAt, updatedAt, createdBy ]
+
+    StatusDto:
+      type: object
+      description: Обновления статуса заявки.
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+      required: [ status ]
+
+    CommentCreateDto:
+      type: object
+      description: Новый комментарий к заявке.
+      properties:
+        text:
+          type: string
+          description: Текст комментария.
+      required: [ text ]
+
+    ResponseDetailsDto:
+      type: object
+      description: Детальная информация по заявке, включая комментарии.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Уникальный идентификатор заявки.
+        title:
+          type: string
+          description: Название заявки.
+        description:
+          type: string
+          description: Подробное описание заявки.
+        status:
+          $ref: '#/components/schemas/Status'
+        assignedTo:
+          type: string
+          description: Имя пользователя, назначенного исполнителем заявки.
+        createdBy:
+          type: string
+          description: Заявка создана.
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата и время создания заявки.
+        updatedAt:
+          type: string
+          format: date-time
+          description: Дата и время обновления заявки.
+        comments:
+          type: array
+          description: Список комментариев к заявке.
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int64
+                description: Уникальный идентификатор комментария.
+              text:
+                type: string
+                description: Текст комментария.
+              author:
+                type: string
+                description: Автор комментария.
+              createdAt:
+                type: string
+                format: date-time
+                description: Дата и время создания комментария..
+      required: [id, title, description, status, createdBy, createdAt, updatedAt]
+    Status:
+      type: string
+      description: |
+        Статус заявки на ремонт:
+          - NEW: Новая заявка
+          - IN_PROGRESS: Заявка в работе
+          - DONE: Заявка выполнена
+      enum:
+        - NEW
+        - IN_PROGRESS
+        - DONE
+      example: NEW
+
+    Role:
+      type: string
+      description: |
+        Роль пользователя:
+          - ADMIN: Администратор (полный доступ)
+          - MANAGER: Менеджер (создание и управление заявками)
+          - TECHNICIAN: Исполнитель (работа с назначенными заявками)
+        enum:
+          - ADMIN
+          - MANAGER
+          - TECHNICIAN
+        example: TECHNICIAN      
+
+paths:
+  /api/auth/login:
+    post:
+      operationId: apiAuthLoginPost
+      tags: [ Auth ]
+      summary: Вход в систему
+      description: Аутентификация пользователя и выдача JWT токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestDto'
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponseDto'
+        '401':
+          description: Неверный логин или пароль
+
+  /api/requests:
+    post:
+      operationId: apiRequestsPost
+      tags: [ RepairRequests ]
+      summary: Создать заявку
+      security: [ bearerAuth: [ ] ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketRequestDto'
+      responses:
+        '200':
+          description: Заявка создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketResponseDto'
+
+    get:
+      operationId: apiRequestsGet
+      tags: [ RepairRequests ]
+      summary: Получить список заявок
+      security: [ bearerAuth: [ ] ]
+      responses:
+        '200':
+          description: Список заявок пользователя
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketResponseDto'
+
+  /api/requests/{id}/assign/{userId}:
+    put:
+      operationId: apiRequestsIdAssignUserIdPut
+      tags: [ RepairRequests ]
+      summary: Назначить исполнителя
+      security: [ bearerAuth: [ ] ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Исполнитель назначен
+
+  /api/requests/{id}/status:
+    put:
+      operationId: apiRequestsIdStatusPut
+      tags: [ RepairRequests ]
+      summary: Обновить статус заявки
+      security: [ bearerAuth: [ ] ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusDto'
+      responses:
+        '204':
+          description: Статус обновлен
+
+  /api/requests/{id}/comments:
+    post:
+      operationId: apiRequestsIdCommentsPost
+      tags: [ RepairRequests ]
+      summary: Добавить комментарий
+      security: [ bearerAuth: [ ] ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentCreateDto'
+      responses:
+        '200':
+          description: ID созданного комментария
+          content:
+            application/json:
+              schema:
+                type: integer
+
+  /api/requests/{id}:
+    get:
+      operationId: apiRequestsIdGet
+      tags: [ RepairRequests ]
+      summary: Детали заявки
+      security: [ bearerAuth: [ ] ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Детальная информация по заявке
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDetailsDto'
+
+
